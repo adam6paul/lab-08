@@ -12,7 +12,7 @@ library(tidyverse)
 library(skimr)
 ```
 
-```{r load-data, message = FALSE, eval = FALSE}
+```{r load-data, message = FALSE, eval = TRUE}
 # Remove eval = FALSE or set it to TRUE once data is ready to be loaded
 uoe_art <- read_csv("data/uoe-art.csv")
 ```
@@ -23,18 +23,102 @@ uoe_art <- read_csv("data/uoe-art.csv")
 uoe_art <- uoe_art %>%
   separate(title, into = c("title", "date"), sep = "\\(") %>%
   mutate(year = str_remove(date, "\\)") %>% as.numeric()) %>%
-  select(title, artist, year, ___)
+  select(title, artist, year, date)
 ```
 
 ### Exercise 10
 
-Remove this text, and add your answer for Exercise 10 here.
-Add code chunks as needed.
-Don't forget to label your code chunk.
-Do not use spaces in code chunk labels.
+>Fill in the blanks in to implement the data wrangling we described above. Note that this approach will result in some warnings when you run the code, and that’s OK! Read the warnings, and explain what they mean, and why we are ok with leaving them in given that our objective is to just capture year where it’s convenient to do so.
+
+The first part of the warning said that it only expected two pieces, but additional pieces were discarded from 38 rows (which means that it encountered what it thought was a third split point, and discarded it).
+
+The second part said that missing pieces were filled with NA, which is filling in pieces that did not have a date with NA.
+
+Because we want the date as best we can, we're fine with discarding the unnecessary info, and can't put a date to a painting if it's not known, so it's actually NA.
 
 ### Exercise 11
 
-...
+>Print out a summary of the dataframe using the skim() function. How many pieces have artist info missing? How many have year info missing?
 
-Add exercise headings as needed.
+```{r skimming}
+skim(uoe_art)
+```
+
+The artist is unknown for 113 pieces, and 620 pieces have no date (so they'll have to go to prom with their mom).
+
+
+### Exercise 12
+
+>Make a histogram of years. Use a reasonable binwidth. Do you see anything out of the ordinary?
+
+```{r histogram}
+uoe_art %>% 
+  ggplot(aes(x = year))+
+  geom_histogram() + 
+  coord_cartesian(xlim = c(1770 , 2030))
+```
+
+
+Before applying the binwidth, I saw that one piece has a date of ~0, which is odd.
+
+
+### Exercise 13
+
+>Find which piece has the out of the ordinary year and go to its page on the art collection website to find the correct year for it. Can you tell why our code didn’t capture the correct year information? Correct the error in the data frame and visualize the data again.
+
+
+```{r looking for year 0}
+uoe_art %>% 
+  arrange(year)
+```
+
+Death Mask (2), by H. Dempshall is listed as year 2, date 2. Its actual creation date was 1964, but the code stopped at the first instance of ( and cut off the date. So I should be able to just change its date.
+
+
+```{r fixing death mask}
+uoe_art <- uoe_art %>% 
+  mutate(year = if_else(
+      year == "2" , "1964",
+      if_else(year != "2" , paste0(year), "NA"
+    ))) %>% 
+  mutate(year = as.numeric(year))
+
+```
+
+
+```{r histogram redo}
+uoe_art %>% 
+  ggplot(aes(x = year))+
+  geom_histogram() + 
+  coord_cartesian(xlim = c(1770 , 2030))
+```
+
+### Exercise 14
+
+>Who is the most commonly featured artist in the collection? Do you know them? Any guess as to why the university has so many pieces from them?
+
+```{r looking at artist}
+
+uoe_art %>% 
+  count(artist) %>% 
+  arrange(desc(n))
+
+```
+
+They have the most pieces by Emma Gillies, which I would have to guess is because her work was donated there after her death. That's usually why a university has a lot of a single artist- for example, Ole Miss' library was filled with a former dean's art donated after his death.
+
+
+### Exercise 15
+
+I would not have gotten this without help Elayna.
+
+```{r children}
+uoe_art %>% 
+  filter(
+    str_detect(title , "child") |
+      str_detect(title , "Child")
+  )
+```
+
+
+But thanks to that help, there seems to be 10 titles with Child in the name.
